@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KGNS+ 知识图谱书籍推荐系统</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/vis-data@7.1.9/peer/umd/vis-data.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/peer/umd/vis-network.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --line: #d7e0ee;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --brand: #2563eb;
+      --brand-2: #0ea5a4;
+      --danger: #ef4444;
+      --author: #2563eb;
+      --category: #16a34a;
+      --tag: #f59e0b;
+      --twohop: #64748b;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 10% 10%, #dbeafe 0, transparent 28%),
+        radial-gradient(circle at 90% 0%, #ccfbf1 0, transparent 24%),
+        var(--bg);
+      color: var(--text-main);
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+    }
+
+    .page-wrap {
+      width: min(1500px, 96vw);
+      margin: 20px auto 40px;
+    }
+
+    .hero {
+      background: linear-gradient(120deg, #e8f1ff 0%, #ecfeff 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.35rem, 2.2vw, 2rem);
+      margin-bottom: 6px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+
+    .hero p {
+      color: var(--text-sub);
+      margin: 0;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 8px 26px rgba(15, 23, 42, 0.06);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    .panel h2 {
+      font-size: 1.45rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+    }
+
+    .panel h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .stat-title {
+      color: #64748b;
+      font-size: 0.88rem;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .metric-title {
+      color: #64748b;
+      font-size: 0.88rem;
+      margin-bottom: 5px;
+    }
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: #0f172a;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+    }
+
+    .result-list {
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fcfdff;
+    }
+
+    .book-row {
+      border: 1px solid #e7edf7;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+
+    .book-title {
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .book-meta {
+      color: var(--text-sub);
+      font-size: 0.92rem;
+    }
+
+    .recommend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .recommend-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .reason-text {
+      color: #1d4ed8;
+      font-weight: 500;
+      line-height: 1.45;
+    }
+
+    .graph-wrap {
+      width: 100%;
+      height: 480px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      margin-top: 12px;
+      color: #334155;
+      font-size: 0.92rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .line {
+      width: 22px;
+      height: 0;
+      border-top: 3px solid #000;
+      display: inline-block;
+    }
+
+    .login-wrap {
+      max-width: 460px;
+      margin: 24px auto;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1100px) {
+      .module-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page-wrap {
+        width: min(96vw, 96vw);
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <header class="hero">
+      <div>
+        <div style="font-size:12px; font-weight:700; color:#0f766e; letter-spacing:1.2px;">KGNS + GRAPH LEARNING</div>
+        <h1>📚 基于知识图谱的图书推荐系统</h1>
+        <p>融合图谱路径证据（作者/类别/标签/二跳）与 KGIN 深度学习嵌入的个性化推荐。</p>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span id="loginBadge" class="badge text-bg-secondary">未登录</span>
+        <span id="modelBadge" class="badge text-bg-warning">模型状态未知</span>
+      </div>
+    </header>
+
+    <section id="loginSection" class="panel login-wrap">
+      <h2>用户登录</h2>
+      <p class="text-secondary">输入用户名和密码，系统会自动登录或首次注册。</p>
+      <div class="mb-2">
+        <label class="form-label">用户名</label>
+        <input id="usernameInput" class="form-control" placeholder="例如：alice" />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">密码</label>
+        <input id="passwordInput" type="password" class="form-control" placeholder="请输入密码" />
+      </div>
+      <button id="loginBtn" class="btn btn-primary w-100">登录 / 注册</button>
+      <div id="loginMsg" class="small mt-2 text-danger"></div>
+    </section>
+
+    <section id="appSection" class="hidden">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-title">当前用户</div>
+          <div class="stat-value" id="statUser">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">已评分书籍</div>
+          <div class="stat-value" id="statRated">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">候选推荐</div>
+          <div class="stat-value" id="statRecs">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">图谱节点数</div>
+          <div class="stat-value" id="statNodes">0</div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+          <h2 class="mb-0">模型评估看板</h2>
+          <span id="metricsUpdatedAt" class="small text-secondary">更新时间：-</span>
+        </div>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-title">当前评估模型</div>
+            <div class="metric-value" id="metricModel">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">评估用户数</div>
+            <div class="metric-value" id="metricUsers">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">HitRate@10</div>
+            <div class="metric-value" id="metricHit10">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">NDCG@10</div>
+            <div class="metric-value" id="metricNdcg10">-</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">MRR</div>
+            <div class="metric-value" id="metricMrr">-</div>
+          </div>
+        </div>
+        <div id="metricsHint" class="small text-secondary mt-2">
+          指标来自 artifacts/eval_metrics.json（运行评估脚本后自动更新）。
+        </div>
+      </section>
+
+      <div class="module-grid">
+        <section class="panel">
+          <h2>1. 搜索并评分书籍</h2>
+          <div class="row g-2 mb-3">
+            <div class="col-md-7">
+              <input id="keywordInput" class="form-control" placeholder="输入书名/作者/标签关键词，例如：三体" />
+            </div>
+            <div class="col-md-2">
+              <input id="limitInput" type="number" min="1" max="50" value="12" class="form-control" />
+            </div>
+            <div class="col-md-3 d-grid">
+              <button id="searchBtn" class="btn btn-primary">搜索书籍</button>
+            </div>
+          </div>
+          <div id="searchResult" class="result-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>2. 我的评分书单</h2>
+          <p class="text-secondary">评分越完整，推荐越稳定。评分范围 0-5。</p>
+          <div id="ratingList" class="result-list"></div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+          <h2 class="mb-0">3. 生成个性化推荐</h2>
+          <div class="d-flex align-items-center gap-2">
+            <input id="topNInput" type="number" min="1" max="30" value="10" class="form-control" style="width:96px;" />
+            <div class="d-flex align-items-center gap-2" style="min-width:240px;">
+              <label for="diversityInput" class="small text-secondary mb-0" style="white-space:nowrap;">多样性</label>
+              <input id="diversityInput" type="range" min="0" max="2" step="0.1" value="1.0" class="form-range mb-0" />
+              <span id="diversityValue" class="small text-secondary" style="min-width:30px;">1.0</span>
+            </div>
+            <button id="recommendBtn" class="btn btn-success">生成推荐</button>
+            <button id="logoutBtn" class="btn btn-outline-danger">退出登录</button>
+          </div>
+        </div>
+        <div id="recommendMsg" class="small text-secondary mt-2">点击“生成推荐”后展示结果。</div>
+        <div id="recommendList" class="recommend-grid"></div>
+      </section>
+
+      <section class="panel">
+        <h2>4. 推荐关系图谱</h2>
+        <p class="text-secondary">关系路径：用户 -> 评分书籍 -> 推荐书籍。点击任意边可查看推荐原因。</p>
+        <div id="graphBox" class="graph-wrap"></div>
+        <div class="legend">
+          <span class="legend-item"><span class="dot" style="background:#ef4444"></span>红色节点：当前用户</span>
+          <span class="legend-item"><span class="dot" style="background:#f59e0b"></span>橙色节点：已评分书籍</span>
+          <span class="legend-item"><span class="dot" style="background:#3b82f6"></span>蓝色节点：推荐书籍</span>
+          <span class="legend-item"><span class="line" style="border-top-color:#2563eb"></span>蓝色边：作者关系</span>
+          <span class="legend-item"><span class="line" style="border-top-color:#16a34a"></span>绿色边：类别关系</span>
+          <span class="legend-item"><span class="line" style="border-top-color:#f59e0b"></span>橙色边：标签关系</span>
+          <span class="legend-item"><span class="line" style="border-top-color:#64748b"></span>灰色边：二跳关系</span>
+        </div>
+        <div id="edgeReasonPanel" class="alert alert-info mt-3 mb-0">
+          点击图中的边后，这里会显示该关系对应的推荐依据。
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <script>
+    const apiBase = window.location.origin;
+    let currentUser = null;
+    let searchBooks = [];
+    let ratings = [];
+    let recommendations = [];
+    let graphNetwork = null;
+    let edgeMetaMap = {};
+
+    const el = {
+      loginSection: document.getElementById("loginSection"),
+      appSection: document.getElementById("appSection"),
+      usernameInput: document.getElementById("usernameInput"),
+      passwordInput: document.getElementById("passwordInput"),
+      loginBtn: document.getElementById("loginBtn"),
+      loginMsg: document.getElementById("loginMsg"),
+      loginBadge: document.getElementById("loginBadge"),
+      modelBadge: document.getElementById("modelBadge"),
+      keywordInput: document.getElementById("keywordInput"),
+      limitInput: document.getElementById("limitInput"),
+      searchBtn: document.getElementById("searchBtn"),
+      searchResult: document.getElementById("searchResult"),
+      ratingList: document.getElementById("ratingList"),
+      recommendBtn: document.getElementById("recommendBtn"),
+      recommendList: document.getElementById("recommendList"),
+      recommendMsg: document.getElementById("recommendMsg"),
+      topNInput: document.getElementById("topNInput"),
+      diversityInput: document.getElementById("diversityInput"),
+      diversityValue: document.getElementById("diversityValue"),
+      logoutBtn: document.getElementById("logoutBtn"),
+      statUser: document.getElementById("statUser"),
+      statRated: document.getElementById("statRated"),
+      statRecs: document.getElementById("statRecs"),
+      statNodes: document.getElementById("statNodes"),
+      metricModel: document.getElementById("metricModel"),
+      metricUsers: document.getElementById("metricUsers"),
+      metricHit10: document.getElementById("metricHit10"),
+      metricNdcg10: document.getElementById("metricNdcg10"),
+      metricMrr: document.getElementById("metricMrr"),
+      metricsUpdatedAt: document.getElementById("metricsUpdatedAt"),
+      metricsHint: document.getElementById("metricsHint"),
+      graphBox: document.getElementById("graphBox"),
+      edgeReasonPanel: document.getElementById("edgeReasonPanel")
+    };
+
+    function setMessage(target, text, type = "danger") {
+      target.className = "small mt-2 text-" + type;
+      target.textContent = text || "";
+    }
+
+    async function apiGet(path, params = {}) {
+      const url = new URL(apiBase + path);
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && String(v) !== "") {
+          url.searchParams.set(k, v);
+        }
+      });
+      const res = await fetch(url);
+      return await res.json();
+    }
+
+    async function apiPost(path, body = {}) {
+      const res = await fetch(apiBase + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      return await res.json();
+    }
+
+    async function apiDelete(path, params = {}) {
+      const url = new URL(apiBase + path);
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && String(v) !== "") {
+          url.searchParams.set(k, v);
+        }
+      });
+      const res = await fetch(url, { method: "DELETE" });
+      return await res.json();
+    }
+
+    function updateStats() {
+      el.statUser.textContent = currentUser ? currentUser.username : "-";
+      el.statRated.textContent = String(ratings.length);
+      el.statRecs.textContent = String(recommendations.length);
+    }
+
+    function reasonTypeLabel(type) {
+      if (type === "AUTHOR") return "同作者推荐";
+      if (type === "CATEGORY") return "同类别推荐";
+      if (type === "TAG") return "同标签推荐";
+      if (type === "TWO_HOP") return "二跳路径推荐";
+      return "图谱推荐";
+    }
+
+    function edgeColorByType(type) {
+      if (type === "AUTHOR") return "#2563eb";
+      if (type === "CATEGORY") return "#16a34a";
+      if (type === "TAG") return "#f59e0b";
+      return "#64748b";
+    }
+
+    function formatPercent(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
+      return (Number(v) * 100).toFixed(2) + "%";
+    }
+
+    function formatDecimal(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
+      return Number(v).toFixed(4);
+    }
+
+    function resetMetricsBoard() {
+      el.metricModel.textContent = "-";
+      el.metricUsers.textContent = "-";
+      el.metricHit10.textContent = "-";
+      el.metricNdcg10.textContent = "-";
+      el.metricMrr.textContent = "-";
+      el.metricsUpdatedAt.textContent = "更新时间：-";
+      el.metricsHint.textContent = "未检测到评估结果，请先运行评估脚本。";
+    }
+
+    async function refreshModelMetrics() {
+      try {
+        const resp = await apiGet("/api/model/metrics");
+        if (resp.code !== 0 || !resp.data || !resp.data.loaded) {
+          resetMetricsBoard();
+          return;
+        }
+        const data = resp.data;
+        el.metricModel.textContent = (data.model || "unknown").toUpperCase();
+        el.metricUsers.textContent = String(data.evaluated_users || 0);
+        el.metricHit10.textContent = formatPercent(data["hit_rate@10"]);
+        el.metricNdcg10.textContent = formatPercent(data["ndcg@10"]);
+        el.metricMrr.textContent = formatDecimal(data.mrr);
+        el.metricsUpdatedAt.textContent = "更新时间：" + (data.updated_at || "-");
+        const mode = data.eval_mode ? String(data.eval_mode) : "unknown";
+        el.metricsHint.textContent = `评估模式：${mode}，可作为答辩展示核心指标。`;
+      } catch (err) {
+        resetMetricsBoard();
+      }
+    }
+
+    async function refreshModelStatus() {
+      try {
+        const resp = await apiGet("/api/model/status");
+        if (resp.code === 0 && resp.data.loaded) {
+          el.modelBadge.className = "badge text-bg-success";
+          const modelName = resp.data.model ? String(resp.data.model) : "loaded";
+          el.modelBadge.textContent = "模型已加载: " + modelName;
+        } else {
+          el.modelBadge.className = "badge text-bg-warning";
+          el.modelBadge.textContent = "仅图谱推荐";
+        }
+      } catch (err) {
+        el.modelBadge.className = "badge text-bg-danger";
+        el.modelBadge.textContent = "模型状态异常";
+      }
+    }
+
+    async function doLogin() {
+      const username = el.usernameInput.value.trim();
+      const password = el.passwordInput.value.trim();
+      if (!username || !password) {
+        return setMessage(el.loginMsg, "请输入用户名和密码");
+      }
+
+      const resp = await apiPost("/api/auth/login", { username, password });
+      if (resp.code !== 0) {
+        return setMessage(el.loginMsg, resp.message || "登录失败");
+      }
+
+      currentUser = resp.data;
+      el.loginSection.classList.add("hidden");
+      el.appSection.classList.remove("hidden");
+      el.loginBadge.className = "badge text-bg-success";
+      el.loginBadge.textContent = "已登录：" + currentUser.username;
+      setMessage(el.loginMsg, "", "success");
+      await refreshRatings();
+      updateStats();
+      await searchBooksAction();
+      await refreshModelStatus();
+      await refreshModelMetrics();
+    }
+
+    function logout() {
+      currentUser = null;
+      ratings = [];
+      recommendations = [];
+      searchBooks = [];
+      el.loginSection.classList.remove("hidden");
+      el.appSection.classList.add("hidden");
+      el.loginBadge.className = "badge text-bg-secondary";
+      el.loginBadge.textContent = "未登录";
+      el.usernameInput.value = "";
+      el.passwordInput.value = "";
+      if (graphNetwork) {
+        graphNetwork.destroy();
+        graphNetwork = null;
+      }
+      resetMetricsBoard();
+    }
+
+    async function searchBooksAction() {
+      const keyword = el.keywordInput.value.trim();
+      const limit = parseInt(el.limitInput.value || "12", 10);
+      const resp = await apiGet("/api/books/search", { keyword, limit });
+      searchBooks = (resp && resp.data) ? resp.data : [];
+      renderSearchBooks();
+    }
+
+    async function saveRating(bookId, inputId) {
+      if (!currentUser) return;
+      const ratingVal = parseFloat(document.getElementById(inputId).value);
+      if (Number.isNaN(ratingVal) || ratingVal < 0 || ratingVal > 5) {
+        alert("评分请输入 0-5 之间的数字");
+        return;
+      }
+
+      const resp = await apiPost("/api/rate", {
+        user_id: currentUser.user_id,
+        book_id: bookId,
+        rating: ratingVal
+      });
+      if (resp.code !== 0) {
+        alert(resp.message || "保存评分失败");
+        return;
+      }
+      await refreshRatings();
+    }
+
+    async function refreshRatings() {
+      if (!currentUser) return;
+      const resp = await apiGet("/api/ratings", { user_id: currentUser.user_id });
+      ratings = (resp && resp.data) ? resp.data : [];
+      renderRatings();
+      updateStats();
+      renderGraph();
+    }
+
+    async function deleteRating(bookId) {
+      if (!currentUser) return;
+      const resp = await apiDelete("/api/rate", { user_id: currentUser.user_id, book_id: bookId });
+      if (resp.code !== 0) {
+        alert(resp.message || "删除失败");
+        return;
+      }
+      await refreshRatings();
+      if (recommendations.length > 0) {
+        await recommendAction();
+      }
+    }
+
+    async function recommendAction() {
+      if (!currentUser) return;
+      const topN = parseInt(el.topNInput.value || "10", 10);
+      const diversityStrength = parseFloat(el.diversityInput.value || "1.0");
+      const resp = await apiGet("/api/recommend", {
+        user_id: currentUser.user_id,
+        top_n: topN,
+        diversity_strength: diversityStrength
+      });
+      recommendations = (resp && resp.data) ? resp.data : [];
+      renderRecommendations();
+      renderGraph();
+      updateStats();
+
+      if (recommendations.length === 0) {
+        el.recommendMsg.textContent = "暂无推荐结果，请先补充评分书籍。";
+      } else {
+        el.recommendMsg.textContent = `已生成 ${recommendations.length} 条推荐。`;
+      }
+    }
+
+    function renderSearchBooks() {
+      if (!searchBooks.length) {
+        el.searchResult.innerHTML = '<div class="text-secondary">暂无搜索结果</div>';
+        return;
+      }
+      const html = searchBooks.map((book, idx) => {
+        const inputId = "rate_input_" + idx;
+        const avgRating = Number(book.average_rating || 0).toFixed(2);
+        const ratingsCount = Number(book.ratings_count || 0);
+        return `
+          <div class="book-row">
+            <div class="book-title">${book.title || "未命名"}</div>
+            <div class="book-meta">
+              ${book.author || "未知作者"} | ${book.category || "未分类"} | 评分均值: ${avgRating} | 评分人数: ${ratingsCount} | ID: ${book.book_id}
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <input id="${inputId}" type="number" min="0" max="5" step="0.5" value="4" class="form-control" style="max-width:130px;" />
+              <button class="btn btn-sm btn-success" onclick="saveRating('${book.book_id}', '${inputId}')">保存评分</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      el.searchResult.innerHTML = html;
+    }
+
+    function renderRatings() {
+      if (!ratings.length) {
+        el.ratingList.innerHTML = '<div class="text-secondary">你还没有评分记录。</div>';
+        return;
+      }
+      const html = ratings.map((item) => `
+        <div class="book-row">
+          <div class="book-title">${item.title}</div>
+          <div class="book-meta">${item.author} | ${item.category} | 评分：${item.rating}</div>
+          <button class="btn btn-sm btn-outline-danger mt-2" onclick="deleteRating('${item.book_id}')">删除</button>
+        </div>
+      `).join("");
+      el.ratingList.innerHTML = html;
+    }
+
+    function showRecommendationEdgeDetails(rec) {
+      if (!rec || !rec.evidence || rec.evidence.length === 0) {
+        el.edgeReasonPanel.className = "alert alert-secondary mt-3 mb-0";
+        el.edgeReasonPanel.textContent = "该推荐暂无图路径细节（可能主要来自嵌入相似度）。";
+        return;
+      }
+
+      const first = rec.evidence[0];
+      const reason = `${reasonTypeLabel(first.type)}：从《${first.seed_title}》推导到《${rec.title}》` +
+        (first.value ? `，依据值：${first.value}` : "") +
+        (first.bridge_title ? `，桥接节点：《${first.bridge_title}》` : "");
+
+      el.edgeReasonPanel.className = "alert alert-info mt-3 mb-0";
+      el.edgeReasonPanel.textContent = reason;
+    }
+
+    function renderRecommendations() {
+      if (!recommendations.length) {
+        el.recommendList.innerHTML = "";
+        return;
+      }
+      const html = recommendations.map((rec, idx) => `
+        <div class="recommend-card">
+          <div class="book-title">${idx + 1}. ${rec.title}</div>
+          <div class="book-meta">作者：${rec.author} | 类别：${rec.category}</div>
+          <div class="book-meta">
+            综合得分：${rec.score}
+            （图谱归一 ${Number(rec.graph_norm || 0).toFixed(3)}
+            + 嵌入归一 ${Number(rec.embedding_norm || 0).toFixed(3)}
+            + 质量归一 ${Number(rec.quality_norm || 0).toFixed(3)}）
+          </div>
+          <p class="reason-text mb-1">推荐理由：${rec.reason}</p>
+          <button class="btn btn-sm btn-outline-primary" onclick="showRecommendationEdgeDetails(recommendations[${idx}])">查看主要推荐依据</button>
+        </div>
+      `).join("");
+      el.recommendList.innerHTML = html;
+    }
+
+    function buildGraphData() {
+      const nodes = new vis.DataSet();
+      const edges = new vis.DataSet();
+      edgeMetaMap = {};
+
+      if (!currentUser) return { nodes, edges };
+
+      nodes.add({
+        id: "user:" + currentUser.user_id,
+        label: currentUser.username,
+        color: "#ef4444",
+        shape: "dot",
+        size: 26,
+        font: { color: "#111827", size: 18, face: "Noto Sans SC", bold: true }
+      });
+
+      ratings.forEach((r) => {
+        const seedNodeId = "seed:" + r.book_id;
+        if (!nodes.get(seedNodeId)) {
+          nodes.add({
+            id: seedNodeId,
+            label: r.title,
+            color: "#f59e0b",
+            shape: "dot",
+            size: 20,
+            font: { size: 16, face: "Noto Sans SC" }
+          });
+        }
+        const edgeId = `u-${currentUser.user_id}-${r.book_id}`;
+        edges.add({
+          id: edgeId,
+          from: "user:" + currentUser.user_id,
+          to: seedNodeId,
+          label: "评分 " + r.rating,
+          color: { color: "#fb923c", highlight: "#f97316" },
+          width: 2
+        });
+        edgeMetaMap[edgeId] = {
+          type: "RATING",
+          detail: `用户对《${r.title}》评分 ${r.rating}`
+        };
+      });
+
+      recommendations.forEach((rec) => {
+        const recNodeId = "rec:" + rec.book_id;
+        if (!nodes.get(recNodeId)) {
+          nodes.add({
+            id: recNodeId,
+            label: rec.title,
+            color: "#3b82f6",
+            shape: "dot",
+            size: 19,
+            font: { size: 16, face: "Noto Sans SC" }
+          });
+        }
+
+        const evidences = Array.isArray(rec.evidence) ? rec.evidence : [];
+        const dedup = {};
+        evidences.forEach((ev) => {
+          const seedId = "seed:" + ev.seed_book_id;
+          if (!nodes.get(seedId)) return;
+
+          const key = `${seedId}->${recNodeId}:${ev.type}:${ev.value || ""}:${ev.bridge_title || ""}`;
+          if (dedup[key]) return;
+          dedup[key] = true;
+
+          const edgeId = "e:" + key;
+          edges.add({
+            id: edgeId,
+            from: seedId,
+            to: recNodeId,
+            label: reasonTypeLabel(ev.type).replace("推荐", ""),
+            color: { color: edgeColorByType(ev.type), highlight: "#111827" },
+            width: 2.2,
+            smooth: { enabled: true, type: "curvedCW", roundness: 0.08 }
+          });
+          edgeMetaMap[edgeId] = {
+            type: ev.type,
+            detail: `${reasonTypeLabel(ev.type)}：从《${ev.seed_title}》到《${rec.title}》` +
+                    (ev.value ? `，依据：${ev.value}` : "") +
+                    (ev.bridge_title ? `，桥接：${ev.bridge_title}` : "") +
+                    `，贡献分：${ev.weight}`
+          };
+        });
+      });
+
+      return { nodes, edges };
+    }
+
+    function renderGraph() {
+      const data = buildGraphData();
+      const nodeCount = data.nodes.length;
+      el.statNodes.textContent = String(nodeCount);
+
+      if (graphNetwork) {
+        graphNetwork.destroy();
+        graphNetwork = null;
+      }
+
+      graphNetwork = new vis.Network(
+        el.graphBox,
+        data,
+        {
+          interaction: {
+            hover: true,
+            tooltipDelay: 180
+          },
+          layout: {
+            improvedLayout: true,
+            randomSeed: 7
+          },
+          physics: {
+            enabled: true,
+            stabilization: { iterations: 150 },
+            barnesHut: { springLength: 170, damping: 0.42 }
+          },
+          edges: {
+            arrows: { to: { enabled: true, scaleFactor: 0.65 } },
+            font: { align: "middle", size: 11, color: "#334155" }
+          },
+          nodes: {
+            borderWidth: 1.5,
+            shapeProperties: { interpolation: true }
+          }
+        }
+      );
+
+      graphNetwork.on("click", (params) => {
+        if (!params.edges || params.edges.length === 0) return;
+        const edgeId = params.edges[0];
+        const meta = edgeMetaMap[edgeId];
+        if (!meta) return;
+        el.edgeReasonPanel.className = "alert alert-info mt-3 mb-0";
+        el.edgeReasonPanel.textContent = meta.detail;
+      });
+
+      graphNetwork.on("hoverNode", (params) => {
+        console.log("hover node:", params.node);
+      });
+
+      graphNetwork.on("selectNode", (params) => {
+        if (!params.nodes || params.nodes.length === 0) return;
+        console.log("clicked node:", params.nodes[0]);
+      });
+    }
+
+    el.loginBtn.addEventListener("click", doLogin);
+    el.searchBtn.addEventListener("click", searchBooksAction);
+    el.recommendBtn.addEventListener("click", recommendAction);
+    el.logoutBtn.addEventListener("click", logout);
+    el.diversityInput.addEventListener("input", () => {
+      el.diversityValue.textContent = Number(el.diversityInput.value || 1).toFixed(1);
+    });
+    el.passwordInput.addEventListener("keyup", (e) => {
+      if (e.key === "Enter") doLogin();
+    });
+
+    refreshModelStatus();
+    refreshModelMetrics();
+  </script>
+</body>
+</html>

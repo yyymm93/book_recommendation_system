@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual env
+.venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime / local data
+data/raw/
+data/processed/
+data/*.db
+
+# Model artifacts
+artifacts/*.npy
+artifacts/*.json
+artifacts/*.pt
+
+# Logs
+*.log
